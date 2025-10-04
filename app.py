@@ -14,7 +14,7 @@ from datetime import datetime
 from collections import defaultdict
 import os
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="templates", static_folder="static")
 DATABASE = 'ransomware_research.db'
 
 def get_db_connection():
@@ -47,58 +47,55 @@ def query_db(query, args=(), one=False):
     conn.close()
     return (rv[0] if rv else None) if one else rv
 
-@app.route('/')
+@app.route("/")
 def index():
     """
     Render the main search page with filter options.
-    
-    Retrieves all unique sectors, countries, TTPs, and date ranges from the database
-    to populate filter dropdowns.
-    
-    Returns:
-        str: Rendered HTML template for the search page
     """
     conn = get_db_connection()
-    
-    # Retrieve all unique sectors for the filter dropdown
-    sectors = conn.execute('''
-        SELECT DISTINCT sector 
-        FROM incidents 
-        WHERE sector IS NOT NULL 
-        ORDER BY sector
-    ''').fetchall()
-    
-    # Retrieve all unique countries for the filter dropdown
-    countries = conn.execute('''
-        SELECT DISTINCT country 
-        FROM incidents 
-        WHERE country IS NOT NULL 
-        ORDER BY country
-    ''').fetchall()
-    
-    # Retrieve all TTPs (MITRE ATT&CK techniques) for the filter dropdown
-    ttps = conn.execute('''
-        SELECT DISTINCT ttp_name
-        FROM ttps
-        ORDER BY attack_id
-    ''').fetchall()
-    
-    # Get the earliest and latest incident dates for date range inputs
-    date_range = conn.execute('''
-        SELECT MIN(incident_date) as min_date, MAX(incident_date) as max_date
+    conn.row_factory = sqlite3.Row
+
+    # Sectors & countries from incidents (deduped, trimmed, non-empty)
+    sectors = conn.execute("""
+        SELECT DISTINCT TRIM(sector) AS sector
         FROM incidents
-        WHERE incident_date IS NOT NULL
-    ''').fetchone()
-    
+        WHERE sector IS NOT NULL AND TRIM(sector) <> ''
+        ORDER BY sector
+    """).fetchall()
+
+    countries = conn.execute("""
+        SELECT DISTINCT TRIM(country) AS country
+        FROM incidents
+        WHERE country IS NOT NULL AND TRIM(country) <> ''
+        ORDER BY country
+    """).fetchall()
+
+    # TTPs: show only techniques that are actually referenced by incidents
+    ttps = conn.execute("""
+        SELECT DISTINCT t.attack_id, t.ttp_name
+        FROM ttps t
+        JOIN incident_ttps it ON it.ttp_id = t.id
+        ORDER BY t.attack_id
+    """).fetchall()
+
+    # Date range from incidents (only non-null dates)
+    date_range = conn.execute("""
+        SELECT MIN(incident_date) AS min_date,
+               MAX(incident_date) AS max_date
+        FROM incidents
+        WHERE incident_date IS NOT NULL AND TRIM(incident_date) <> ''
+    """).fetchone()
+
     conn.close()
-    
-    # Pass filter options to the template
-    return render_template('index.html',
-                         sectors=[s['sector'] for s in sectors],
-                         countries=[c['country'] for c in countries],
-                         ttps=[t['ttp_name'] for t in ttps],
-                         min_date=date_range['min_date'] if date_range else None,
-                         max_date=date_range['max_date'] if date_range else None)
+
+    return render_template(
+        "index.html",
+        sectors=[r["sector"] for r in sectors],
+        countries=[r["country"] for r in countries],
+        ttps=[{"attack_id": r["attack_id"], "name": r["ttp_name"]} for r in ttps],
+        min_date=(date_range["min_date"] if date_range and date_range["min_date"] else ""),
+        max_date=(date_range["max_date"] if date_range and date_range["max_date"] else "")
+    )
 
 @app.route('/search', methods=['POST'])
 def search():
