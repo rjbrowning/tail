@@ -1,0 +1,788 @@
+/* =============================================================================
+   TAIL - Threat Actor Intelligence Lookup
+   Main Stylesheet - Complete Version
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   CSS Custom Properties (Variables)
+   These variables define the colour palette used throughout the application
+   ----------------------------------------------------------------------------- */
+:root {
+  --background-color: #0D1117;      /* Main page background - dark blue-black */
+  --surface-color: #161B22;         /* Card and container backgrounds */
+  --primary-text-color: #E6EDF3;    /* Main text colour - off-white */
+  --secondary-text-color: #8B949E;  /* Labels and less important text - grey */
+  --accent-color: #58A6FF;          /* Links, highlights, important elements - blue */
+  --border-color: #30363D;          /* Borders and separators */
+  --glow-color: rgba(88, 166, 255, 0.3); /* Glow effect for focus states */
+}
+
+/* -----------------------------------------------------------------------------
+   Base Styles
+   ----------------------------------------------------------------------------- */
+body {
+  background-color: var(--background-color);
+  color: var(--primary-text-color);
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+}
+
+/* -----------------------------------------------------------------------------
+   Layout - Index Page
+   Centres the main container vertically and horizontally
+   ----------------------------------------------------------------------------- */
+.index-body {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+}
+
+/* -----------------------------------------------------------------------------
+   Main Container
+   Provides consistent width and spacing across all pages
+   ----------------------------------------------------------------------------- */
+.container {
+  width: 92%;
+  max-width: 1024px;
+  margin: 2rem auto;
+}
+
+/* Index page specific styling - adds background card and extra padding */
+.index-container {
+  text-align: center;
+  padding: 3rem 2rem;
+  margin-top: 4rem;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* -----------------------------------------------------------------------------
+   Logo and Branding
+   ----------------------------------------------------------------------------- */
+.logo {
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: -1px;
+  margin-bottom: 0.2rem;
+  animation: glow 1.5s ease-in-out infinite alternate;
+}
+
+.logo-accent { 
+  color: var(--accent-color); /* The period after "TAIL" */
+}
+
+.subtitle {
+  color: var(--secondary-text-color);
+  font-size: 1rem;
+  margin-bottom: 2rem;
+}
+
+
+/* -----------------------------------------------------------------------------
+   Search Interface
+   ----------------------------------------------------------------------------- */
+.search-container {
+  display: grid;
+  gap: 1.2rem;
+  align-items: start;
+}
+
+/* Search bar with icon */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #0F141B;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  color: var(--primary-text-color);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s ease;
+}
+
+/* Focus state - highlights search bar when user clicks into it */
+.search-bar:focus-within {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 12px var(--glow-color);
+  transform: translateY(-1px);
+}
+
+.search-icon { 
+  color: var(--secondary-text-color); 
+}
+
+.search-bar input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: inherit;
+  font-size: 1rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Advanced Filters Section
+   Collapsible section containing additional filter options
+   ----------------------------------------------------------------------------- */
+.advanced-filters summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--accent-color);
+  user-select: none; /* Prevents text selection when clicking */
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.advanced-filters summary:hover { 
+  background: rgba(88, 166, 255, 0.08); /* Subtle highlight on hover */
+}
+
+/* Grid layout for filter inputs */
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.filter-group { 
+  display: grid; 
+  gap: 0.5rem; 
+  text-align: left; 
+}
+
+.filter-group label {
+  color: var(--secondary-text-color);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+/* Styling for dropdowns and date inputs */
+.filter-group select,
+.filter-group input[type="date"] {
+  background: #0F141B;
+  border: 1px solid var(--border-color);
+  color: var(--primary-text-color);
+  padding: 0.6rem;
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* -----------------------------------------------------------------------------
+   Buttons
+   Reusable button styling for filter actions
+   ----------------------------------------------------------------------------- */
+.filter-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  justify-content: center;
+}
+
+.btn {
+  padding: 0.6rem 1rem;
+  background: #0F141B;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--primary-text-color);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.05s ease-in-out;
+  font-size: 0.95rem;
+}
+
+.btn:hover {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 10px var(--glow-color);
+}
+
+.btn:active {
+  transform: translateY(1px); /* Subtle "press down" effect */
+}
+
+/* -----------------------------------------------------------------------------
+   Search Results
+   ----------------------------------------------------------------------------- */
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  margin-top: 1rem;
+}
+
+.results-count {
+  color: var(--secondary-text-color);
+  font-size: 0.95rem;
+}
+
+.results-container {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+/* Individual result cards - clickable links to group details */
+.result-link-card {
+  display: block;
+  text-decoration: none;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 1rem;
+  background: #0E1621;
+  color: var(--primary-text-color);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+  transition: transform 0.1s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.result-link-card:hover {
+  transform: translateY(-1px); /* Slight lift effect */
+  border-color: var(--accent-color);
+  box-shadow: 0 10px 24px rgba(88, 166, 255, 0.15);
+}
+
+.result-link-card h3 { 
+  margin: 0 0 0.6rem 0; 
+  font-size: 1.1rem; 
+}
+
+/* Summary details shown in search results */
+.summary-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  color: var(--secondary-text-color);
+  font-size: 0.95rem;
+}
+
+.summary-item { 
+  display: inline-flex; 
+  gap: 6px; 
+  align-items: baseline; 
+}
+
+/* -----------------------------------------------------------------------------
+   Match Badges and Date Ranges
+   Shows why a search result matched the query
+   ----------------------------------------------------------------------------- */
+.match-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.match-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: rgba(88, 166, 255, 0.15);
+  border: 1px solid var(--accent-color);
+  border-radius: 12px;
+  font-size: 0.8rem;
+  color: var(--accent-color);
+}
+
+.date-range {
+  color: var(--secondary-text-color);
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+/* -----------------------------------------------------------------------------
+   Loading and Empty States
+   Provides feedback to users during searches or when no results found
+   ----------------------------------------------------------------------------- */
+.loading {
+  text-align: center;
+  padding: 3rem;
+  color: var(--secondary-text-color);
+}
+
+/* Animated loading spinner */
+.spinner {
+  border: 3px solid var(--border-color);
+  border-top: 3px solid var(--accent-color);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--secondary-text-color);
+}
+
+.empty-state h3 {
+  color: var(--primary-text-color);
+  margin-bottom: 1rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Legacy Button Styles
+   Maintained for backwards compatibility
+   ----------------------------------------------------------------------------- */
+.result-load-more {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: #0F141B;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--primary-text-color);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.05s ease-in-out;
+}
+
+.result-load-more:hover { 
+  border-color: var(--accent-color); 
+  box-shadow: 0 0 10px var(--glow-color); 
+}
+
+.result-load-more:active { 
+  transform: translateY(1px); 
+}
+
+/* -----------------------------------------------------------------------------
+   Group Details Page
+   ----------------------------------------------------------------------------- */
+.back-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: var(--accent-color);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.back-link:hover { 
+  opacity: 0.85; 
+}
+
+.group-header h1 { 
+  margin: 0 0 0.6rem 0; 
+  font-size: 1.75rem; 
+}
+
+/* Main content sections on group details page */
+.synopsis,
+.profile,
+.incidents-section {
+  background: #0E1621;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Hover effect for profile card to match incident cards */
+.profile:hover {
+  border-color: rgba(88, 166, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* -----------------------------------------------------------------------------
+   Profile Section
+   ----------------------------------------------------------------------------- */
+.profile h2 {
+  color: var(--accent-color);
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.35rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Synopsis Section
+   Integrated seamlessly into profile - no separate box styling
+   ----------------------------------------------------------------------------- */
+.synopsis-section {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  margin-bottom: 1.5rem;
+  border: none;
+}
+
+.synopsis-section h3 {
+  color: var(--secondary-text-color);
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.synopsis-section p {
+  color: var(--primary-text-color);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+/* -----------------------------------------------------------------------------
+   Profile Grid
+   Two-column layout for group attributes (label/value pairs)
+   ----------------------------------------------------------------------------- */
+.profile-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.profile-grid dt {
+  color: var(--secondary-text-color);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.profile-grid dd {
+  margin: 0;
+  color: var(--primary-text-color);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Links within profile grid */
+.profile-grid a {
+  color: var(--accent-color);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.profile-grid a:hover {
+  opacity: 0.85;
+}
+
+/* -----------------------------------------------------------------------------
+   Incidents Section
+   ----------------------------------------------------------------------------- */
+.incidents-section h2 {
+  color: var(--accent-color);
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.35rem;
+}
+
+/* Filter controls for incidents */
+.filter-bar {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.filter-bar input[type="text"],
+.filter-bar select {
+  background: #0F141B;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.6rem;
+  color: var(--primary-text-color);
+  font-size: 0.95rem;
+}
+
+.filter-bar input[type="text"]:focus,
+.filter-bar select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 8px var(--glow-color);
+}
+
+/* Individual incident cards */
+.incidents-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.incident-card {
+  background: #0E1621;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.incident-card:hover {
+  border-color: rgba(88, 166, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.incident-victim-name {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.05rem;
+  color: var(--accent-color);
+}
+
+/* Grid layout for incident details */
+.incident-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.incident-grid dt {
+  color: var(--secondary-text-color);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.incident-grid dd {
+  margin: 0;
+  color: var(--primary-text-color);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Links within incident grid */
+.incident-grid a {
+  color: var(--accent-color);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.incident-grid a:hover {
+  opacity: 0.85;
+}
+
+/* Empty state for incidents */
+.no-incidents {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--secondary-text-color);
+}
+
+/* -----------------------------------------------------------------------------
+   Animations
+   ----------------------------------------------------------------------------- */
+@keyframes glow {
+  0% { 
+    text-shadow: 0 0 10px rgba(88, 166, 255, 0.6),
+                 0 0 20px rgba(88, 166, 255, 0.4);
+  }
+  100% { 
+    text-shadow: 0 0 15px rgba(88, 166, 255, 0.9),
+                 0 0 30px rgba(88, 166, 255, 0.6);
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Responsive Design
+   Adjusts layouts for smaller screens
+   ----------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .filter-bar {
+    grid-template-columns: 1fr;
+  }
+  
+  .profile-grid,
+  .incident-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  
+  .profile-grid dt,
+  .incident-grid dt {
+    font-weight: 600;
+  }
+}
+
+/* =============================================================================
+   MITRE ATT&CK Link Styling Enhancement
+   ============================================================================= */
+
+/* Individual MITRE technique link styling */
+.mitre-link {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  margin: 0.125rem 0.125rem 0.125rem 0;
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 0.25rem;
+  color: #60a5fa;
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  font-family: 'Fira Code', monospace;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+
+/* Hover state - provides visual feedback when user hovers over link */
+.mitre-link:hover {
+  background-color: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #93c5fd;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Focus state - ensures keyboard navigation accessibility */
+.mitre-link:focus {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+/* Visited state - shows user which techniques they've already viewed */
+.mitre-link:visited {
+  color: #a78bfa;
+  border-color: rgba(167, 139, 250, 0.3);
+}
+
+/* Active state - visual feedback when link is being clicked */
+.mitre-link:active {
+  transform: translateY(0);
+  background-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Ensure proper spacing between links and commas in inline context */
+.profile-grid dd a.mitre-link,
+.incident-grid dd a.mitre-link {
+  margin-right: 0.25rem;
+}
+
+/* =============================================================================
+   Multi-Source Display Styles
+   =============================================================================
+   Styles for displaying multiple source URLs with icons and type indicators
+   ============================================================================= */
+
+/* Source list container */
+.source-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+/* Individual source item */
+.source-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(88, 166, 255, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.source-item:hover {
+  background: rgba(88, 166, 255, 0.1);
+  border-color: rgba(88, 166, 255, 0.3);
+}
+
+/* Source type icon */
+.source-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+/* Source link */
+.source-link {
+  color: var(--accent-color);
+  text-decoration: none;
+  word-break: break-all;
+  flex: 1;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.source-link:hover {
+  text-decoration: underline;
+  opacity: 0.85;
+}
+
+/* Source type badge */
+.source-type {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: rgba(88, 166, 255, 0.15);
+  border: 1px solid var(--accent-color);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  color: var(--accent-color);
+  margin-left: 0.5rem;
+  white-space: nowrap;
+}
+
+/* Onion/Tor specific styling */
+.source-item.onion {
+  background: rgba(138, 43, 226, 0.05);
+  border-color: rgba(138, 43, 226, 0.3);
+}
+
+.source-item.onion:hover {
+  background: rgba(138, 43, 226, 0.1);
+}
+
+.source-item.onion .source-link {
+  color: #ba68c8;
+}
+
+.source-item.onion .source-type {
+  background: rgba(138, 43, 226, 0.15);
+  border-color: #ba68c8;
+  color: #ba68c8;
+}
+
+/* Government source styling */
+.source-item.government {
+  background: rgba(76, 175, 80, 0.05);
+  border-color: rgba(76, 175, 80, 0.3);
+}
+
+.source-item.government:hover {
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.source-item.government .source-type {
+  background: rgba(76, 175, 80, 0.15);
+  border-color: #66bb6a;
+  color: #66bb6a;
+}
+
+/* Warning badge for Tor sites */
+.tor-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  background: rgba(255, 152, 0, 0.1);
+  border: 1px solid rgba(255, 152, 0, 0.4);
+  border-radius: 6px;
+  color: #ffb74d;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+/* Source count indicator */
+.source-count {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  background: rgba(88, 166, 255, 0.15);
+  border-radius: 12px;
+  font-size: 0.85rem;
+  color: var(--accent-color);
+  margin-left: 0.5rem;
+}

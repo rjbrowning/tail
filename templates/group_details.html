@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ summary.group_name }} - TAIL Details</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Fira+Code&display=swap" rel="stylesheet">
+  
+  <!-- Main stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <!-- 
+    =========================================================================
+    Jinja2 Macro: MITRE ATT&CK Technique Links
+    =========================================================================
+    Creates accessible, clickable links to MITRE ATT&CK techniques.
+    
+    Security considerations:
+    - Uses Jinja2's automatic HTML escaping for ttp values
+    - rel="noopener noreferrer" prevents reverse tabnabbing attacks
+    - target="_blank" safely opens links in new tabs
+    
+    Functionality:
+    - Parses comma-separated TTP strings (e.g., "T1566 Phishing, T1190 Exploit")
+    - Extracts technique ID and converts to proper MITRE URL format
+    - Handles sub-techniques (e.g., T1566.001) by replacing dots with slashes
+    - Returns "N/A" for missing or invalid data
+  -->
+  {% macro mitre_links(ttps_string) -%}
+    {%- if ttps_string and ttps_string != 'N/A' -%}
+      {%- for raw in ttps_string.split(',') -%}
+        {%- set ttp = raw.strip() -%}
+        {%- set tid = ttp.split(' ')[0] -%}
+        {%- set tid_url = tid.replace('.', '/') -%}
+        <a href="https://attack.mitre.org/techniques/{{ tid_url }}/" 
+           target="_blank" 
+           rel="noopener noreferrer" 
+           class="mitre-link"
+           title="View {{ ttp }} on MITRE ATT&CK">{{ ttp }}</a>{%- if not loop.last %}, {% endif %}
+      {%- endfor -%}
+    {%- else -%}
+      N/A
+    {%- endif -%}
+  {%- endmacro %}
+  
+  <!-- 
+    =========================================================================
+    Jinja2 Macro: Multi-Source Display (All Sources Visible)
+    =========================================================================
+    Displays ALL source URLs immediately with appropriate icons and styling.
+    
+    Features:
+    - Automatically detects source type (government, Tor, news, etc.)
+    - Adds appropriate icons and styling
+    - Shows security warnings for .onion sites
+    - All sources visible by default - NO dropdowns
+    
+    Security:
+    - All URLs are escaped by Jinja2
+    - External links use rel="noopener noreferrer"
+    - .onion links clearly marked with warnings
+  -->
+  {% macro display_sources(source_url_string) -%}
+    {%- if source_url_string and source_url_string != 'N/A' -%}
+      {%- set urls = source_url_string.split(';') -%}
+      {%- set url_count = urls|length -%}
+      
+      {%- if url_count > 1 -%}
+        <span class="source-count">{{ url_count }} sources</span>
+      {%- endif -%}
+      
+      <ul class="source-list">
+        {%- for url in urls -%}
+          {%- set clean_url = url.strip() -%}
+          {%- if clean_url -%}
+            {%- set is_onion = '.onion' in clean_url -%}
+            {%- set is_gov = '.gov' in clean_url or 'gov.au' in clean_url or 'gov.uk' in clean_url -%}
+            {%- set is_edu = '.edu' in clean_url -%}
+            
+            <li class="source-item {% if is_onion %}onion{% elif is_gov %}government{% endif %}">
+              <span class="source-icon">
+                {%- if is_onion -%}
+                  🧅
+                {%- elif is_gov -%}
+                  🏛️
+                {%- elif is_edu -%}
+                  🎓
+                {%- elif 'cisa.gov' in clean_url or 'fbi.gov' in clean_url -%}
+                  🛡️
+                {%- elif 'ransomware.live' in clean_url or 'ransomlook.io' in clean_url -%}
+                  📊
+                {%- else -%}
+                  🔗
+                {%- endif -%}
+              </span>
+              
+              <a href="{{ clean_url }}" 
+                 target="_blank" 
+                 rel="noopener noreferrer" 
+                 class="source-link"
+                 title="{{ clean_url }}">
+                {%- if is_onion -%}
+                  Tor Hidden Service
+                {%- else -%}
+                  {{ clean_url|truncate(80, True) }}
+                {%- endif -%}
+              </a>
+              
+              <span class="source-type">
+                {%- if is_onion -%}
+                  Darknet
+                {%- elif is_gov -%}
+                  Government
+                {%- elif is_edu -%}
+                  Academic
+                {%- elif 'cisa.gov' in clean_url -%}
+                  CISA
+                {%- elif 'fbi.gov' in clean_url or 'justice.gov' in clean_url -%}
+                  Law Enforcement
+                {%- elif 'afp.gov.au' in clean_url -%}
+                  AFP
+                {%- elif 'cyber.gov.au' in clean_url -%}
+                  ACSC
+                {%- elif 'nhs.uk' in clean_url or 'england.nhs.uk' in clean_url -%}
+                  NHS
+                {%- elif 'ransomware.live' in clean_url or 'ransomlook.io' in clean_url -%}
+                  Tracking
+                {%- else -%}
+                  News/Security
+                {%- endif -%}
+              </span>
+            </li>
+            
+            {%- if is_onion and loop.first -%}
+              <li>
+                <div class="tor-warning">
+                  ⚠️ <strong>Ethics Approval Required:</strong> Access to Tor hidden services requires university ethics approval, Tor Browser, VPN, and isolated VM. For research purposes only.
+                </div>
+              </li>
+            {%- endif -%}
+          {%- endif -%}
+        {%- endfor -%}
+      </ul>
+    {%- else -%}
+      N/A
+    {%- endif -%}
+  {%- endmacro %}
+
+  <div class="container">
+    <!-- Back navigation link -->
+    <a href="/" class="back-link">&larr; Back to Search</a>
+    
+    <!-- Page header with group name -->
+    <header class="group-header">
+      <h1>{{ summary.group_name }}</h1>
+    </header>
+
+    <!-- 
+      =========================================================================
+      Profile Section
+      =========================================================================
+      Displays comprehensive threat group information including:
+      - Synopsis: Overview of the group's activities and significance
+      - Key attributes: Aliases, motivation, targets, victim count, timeline
+      - TTPs: Techniques, tactics, and procedures used by the group
+    -->
+    <section class="profile">
+      <h2>Profile</h2>
+      
+      <!-- Synopsis - overview of the threat group -->
+      <div class="synopsis-section">
+        <h3>Synopsis</h3>
+        <p>{{ summary.synopsis }}</p>
+      </div>
+
+      <!-- 
+        Profile grid - displays key attributes in label/value pairs
+        Uses definition list (dl) for semantic HTML and accessibility
+      -->
+      <dl class="profile-grid">
+        <dt>Known Aliases</dt><dd>{{ summary.aliases }}</dd>
+        <dt>Motivation</dt><dd>{{ summary.motivation }}</dd>
+        <dt>Industries Targeted</dt><dd>{{ summary.industries }}</dd>
+        <dt>Countries Targeted</dt><dd>{{ summary.regions }}</dd>
+        <dt>Total Victims</dt><dd>{{ summary.total_victims }}</dd>
+        <dt>First Seen</dt><dd>{{ summary.first_seen }}</dd>
+        <dt>Last Seen</dt><dd>{{ summary.last_seen }}</dd>
+        <!-- TTPs with clickable links to MITRE ATT&CK framework -->
+        <dt>TTPs Used</dt><dd>{{ mitre_links(summary.mitre_ttps) | safe }}</dd>
+      </dl>
+    </section>
+
+    <!-- 
+      =========================================================================
+      Incidents Section
+      =========================================================================
+      Lists all recorded incidents for this threat group with client-side
+      filtering capabilities by victim name, sector, and country
+    -->
+    <section class="incidents-section">
+      <h2>Recorded Incidents ({{ incidents|length }})</h2>
+      
+      <!-- 
+        Filter bar for searching and filtering incidents
+        Provides real-time filtering without page reloads
+      -->
+      <div class="filter-bar">
+        <!-- Text search input for victim names -->
+        <input type="text" 
+               id="incident-search" 
+               placeholder="Search Victim Name..."
+               aria-label="Search incidents by victim name">
+        
+        <!-- Dropdown filter for sectors -->
+        <select id="sector-filter" aria-label="Filter by sector">
+          <option value="">All Sectors</option>
+          <!-- Options populated dynamically via JavaScript -->
+        </select>
+        
+        <!-- Dropdown filter for countries -->
+        <select id="country-filter" aria-label="Filter by country">
+          <option value="">All Countries</option>
+          <!-- Options populated dynamically via JavaScript -->
+        </select>
+      </div>
+      
+      <!-- List of incidents -->
+      <div class="incidents-list" id="incidents-list">
+        {% if incidents %}
+          {% for incident in incidents %}
+          <!-- 
+            Incident card with data attributes for filtering
+            
+            Security note: All data attributes are automatically escaped by Jinja2
+            to prevent XSS attacks
+            
+            Data attributes used for client-side filtering:
+            - data-victim: Victim organisation name (lowercase) for search matching
+            - data-sector: Industry sector for dropdown filtering
+            - data-country: Geographic location for dropdown filtering
+            - data-date: Incident date for potential chronological filtering
+          -->
+          <div class="incident-card" 
+               data-victim="{{ incident.victim_name | lower }}" 
+               data-sector="{{ incident.victim_sector | lower }}" 
+               data-country="{{ incident.victim_country | lower }}"
+               data-date="{{ incident.date_of_leak }}">
+            <!-- Victim organisation name as card heading -->
+            <h3 class="incident-victim-name">{{ incident.victim_name }}</h3>
+            
+            <!-- Incident details in definition list format -->
+            <dl class="incident-grid">
+              <dt>Sector</dt><dd>{{ incident.victim_sector }}</dd>
+              <dt>Country</dt><dd>{{ incident.victim_country }}</dd>
+              <dt>Date of Incident</dt><dd>{{ incident.date_of_leak }}</dd>
+              <dt>Data Exposed</dt><dd>{{ incident.data_exposed }}</dd>
+              
+              <!-- TTPs with MITRE ATT&CK links -->
+              <dt>TTPs Used</dt><dd>{{ mitre_links(incident.mitre_ttps) | safe }}</dd>
+              
+              <!-- Enhanced multi-source display -->
+              <dt>Sources</dt>
+              <dd>
+                {{ display_sources(incident.source_url) | safe }}
+              </dd>
+            </dl>
+          </div>
+          {% endfor %}
+        {% else %}
+          <!-- Empty state when no incidents are recorded for this group -->
+          <div class="no-incidents">
+            <p>No recorded incidents for this group.</p>
+          </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // =========================================================================
+    // Incident Filtering System
+    // =========================================================================
+    // Provides client-side filtering of incidents by victim name, sector, 
+    // and country without requiring server requests
+    //
+    // Security considerations:
+    // - Uses textContent for DOM manipulation to prevent XSS
+    // - Filters work on pre-sanitised data attributes from server
+    // =========================================================================
+
+    // Get references to filter elements and incident cards
+    const incidentSearch = document.getElementById('incident-search');
+    const sectorFilter = document.getElementById('sector-filter');
+    const countryFilter = document.getElementById('country-filter');
+    const incidentCards = document.querySelectorAll('.incident-card');
+    
+    // -------------------------------------------------------------------------
+    // Populate Filter Dropdowns
+    // -------------------------------------------------------------------------
+    // Extracts unique sectors and countries from incident data attributes
+    // to dynamically build filter dropdown options
+    // -------------------------------------------------------------------------
+    
+    const sectors = new Set();
+    const countries = new Set();
+    
+    // Iterate through all incident cards to collect unique values
+    incidentCards.forEach(card => {
+      const sector = card.dataset.sector;
+      const country = card.dataset.country;
+      
+      // Only add valid sectors and countries (exclude 'n/a' and empty values)
+      // This prevents useless filter options from appearing
+      if (sector && sector !== 'n/a') sectors.add(sector);
+      if (country && country !== 'n/a') countries.add(country);
+    });
+    
+    // Populate sector dropdown with sorted options
+    [...sectors].sort().forEach(sector => {
+      const option = document.createElement('option');
+      option.value = sector;
+      // Capitalise first letter for better presentation
+      // Uses textContent for XSS prevention
+      option.textContent = sector.charAt(0).toUpperCase() + sector.slice(1);
+      sectorFilter.appendChild(option);
+    });
+    
+    // Populate country dropdown with sorted options
+    [...countries].sort().forEach(country => {
+      const option = document.createElement('option');
+      option.value = country;
+      // Capitalise first letter for better presentation
+      // Uses textContent for XSS prevention
+      option.textContent = country.charAt(0).toUpperCase() + country.slice(1);
+      countryFilter.appendChild(option);
+    });
+    
+    // -------------------------------------------------------------------------
+    // Filter Function
+    // -------------------------------------------------------------------------
+    // Shows or hides incident cards based on active filter criteria
+    // Updates the visible incident count in the section header
+    // -------------------------------------------------------------------------
+    
+    /**
+     * Filters incidents based on current search term and dropdown selections
+     * 
+     * This function is called whenever any filter input changes and performs
+     * the following operations:
+     * 1. Retrieves current filter values (search text, sector, country)
+     * 2. Checks each incident card against all active filters
+     * 3. Shows matching cards and hides non-matching ones
+     * 4. Updates the incident count display
+     * 
+     * Security: All comparisons use pre-sanitised data attributes
+     */
+    function filterIncidents() {
+      // Get current filter values (all lowercase for case-insensitive matching)
+      const searchTerm = incidentSearch.value.toLowerCase().trim();
+      const sectorValue = sectorFilter.value;
+      const countryValue = countryFilter.value;
+      
+      let visibleCount = 0;
+      
+      // Check each incident card against filter criteria
+      incidentCards.forEach(card => {
+        // Get card's data attributes for comparison
+        const victim = card.dataset.victim;
+        const sector = card.dataset.sector;
+        const country = card.dataset.country;
+        
+        // Check if incident matches all active filters
+        // Empty filter values are treated as "show all"
+        const matchesSearch = !searchTerm || victim.includes(searchTerm);
+        const matchesSector = !sectorValue || sector === sectorValue;
+        const matchesCountry = !countryValue || country === countryValue;
+        
+        // Show or hide card based on whether it matches ALL filters
+        if (matchesSearch && matchesSector && matchesCountry) {
+          card.style.display = 'block';
+          visibleCount++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+      
+      // Update incidents count in section header to show filtered results
+      const header = document.querySelector('.incidents-section h2');
+      // Uses textContent for XSS prevention
+      header.textContent = `Recorded Incidents (${visibleCount} of {{ incidents|length }})`;
+    }
+    
+    // -------------------------------------------------------------------------
+    // Event Listeners
+    // -------------------------------------------------------------------------
+    // Attach event listeners to trigger filtering when user interacts with
+    // any filter control
+    // -------------------------------------------------------------------------
+    
+    // Text search: Filter as user types
+    incidentSearch.addEventListener('input', filterIncidents);
+    
+    // Dropdown filters: Filter when selection changes
+    sectorFilter.addEventListener('change', filterIncidents);
+    countryFilter.addEventListener('change', filterIncidents);
+  </script>
+</body>
+</html>

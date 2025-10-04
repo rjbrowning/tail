@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TAIL - Threat Actor Intelligence Lookup</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Main stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="index-body">
+  <div class="container index-container">
+    <!-- Logo and branding -->
+    <div class="logo">TAIL<span class="logo-accent">.</span></div>
+    <div class="subtitle">Threat Actor Intelligence Lookup</div>
+
+    <!-- Search Interface -->
+    <div class="search-container">
+      <!-- Main search bar with icon -->
+      <div class="search-bar">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="search-query" placeholder="Search by group name, alias, sector, victim, or TTP...">
+      </div>
+
+      <!-- Advanced Filters - collapsible section for additional filter options -->
+      <details class="advanced-filters">
+        <summary>Advanced Filters</summary>
+        <div class="filters-grid">
+          <!-- Sector filter dropdown -->
+          <div class="filter-group">
+            <label for="sector-filter">Victim Sector</label>
+            <select id="sector-filter">
+              <option value="">All Sectors</option>
+              {% for sector in sectors %}<option value="{{ sector }}">{{ sector }}</option>{% endfor %}
+            </select>
+          </div>
+          
+          <!-- Country filter dropdown -->
+          <div class="filter-group">
+            <label for="country-filter">Victim Country</label>
+            <select id="country-filter">
+              <option value="">All Countries</option>
+              {% for country in countries %}<option value="{{ country }}">{{ country }}</option>{% endfor %}
+            </select>
+          </div>
+          
+          <!-- TTP (MITRE ATT&CK technique) filter dropdown -->
+          <div class="filter-group">
+            <label for="ttp-filter">MITRE ATT&CK TTP</label>
+            <select id="ttp-filter">
+              <option value="">All TTPs</option>
+              {% for ttp in ttps %}<option value="{{ ttp }}">{{ ttp }}</option>{% endfor %}
+            </select>
+          </div>
+          
+          <!-- Date range filters -->
+          <div class="filter-group">
+            <label for="date-from">Date From</label>
+            <input type="date" id="date-from" min="{{ min_date }}" max="{{ max_date }}">
+          </div>
+          <div class="filter-group">
+            <label for="date-to">Date To</label>
+            <input type="date" id="date-to" min="{{ min_date }}" max="{{ max_date }}">
+          </div>
+        </div>
+        
+        <!-- Action buttons -->
+        <div class="filter-actions">
+          <button class="btn" id="clear-filters">Clear Filters</button>
+        </div>
+      </details>
+    </div>
+
+    <!-- Results header - shows count of matching groups (hidden until search performed) -->
+    <div id="results-header" class="results-header" style="display: none;">
+      <div class="results-count" id="results-count"></div>
+    </div>
+    
+    <!-- Results container - populated dynamically via JavaScript -->
+    <div class="results-container" id="results-container"></div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // TAIL Search Interface JavaScript
+    // Handles search functionality, filtering, and results display
+    // =========================================================================
+
+    // Get references to all form elements
+    const searchQueryEl = document.getElementById('search-query');
+    const sectorFilterEl = document.getElementById('sector-filter');
+    const countryFilterEl = document.getElementById('country-filter');
+    const ttpFilterEl = document.getElementById('ttp-filter');
+    const dateFromEl = document.getElementById('date-from');
+    const dateToEl = document.getElementById('date-to');
+    const clearFiltersBtn = document.getElementById('clear-filters');
+    const resultsContainer = document.getElementById('results-container');
+    const resultsHeader = document.getElementById('results-header');
+    const resultsCount = document.getElementById('results-count');
+    
+    let debounceTimer; // Timer for debouncing search input
+
+    // -------------------------------------------------------------------------
+    // Event Listeners
+    // -------------------------------------------------------------------------
+
+    // Debounce text search input to avoid excessive API calls
+    // Waits 300ms after user stops typing before performing search
+    searchQueryEl.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(performSearch, 300);
+    });
+
+    // Immediate search when filters change
+    sectorFilterEl.addEventListener('change', performSearch);
+    countryFilterEl.addEventListener('change', performSearch);
+    ttpFilterEl.addEventListener('change', performSearch);
+    dateFromEl.addEventListener('change', performSearch);
+    dateToEl.addEventListener('change', performSearch);
+    
+    // Clear all filters and reset to initial state
+    clearFiltersBtn.addEventListener('click', () => {
+      searchQueryEl.value = '';
+      sectorFilterEl.value = '';
+      countryFilterEl.value = '';
+      ttpFilterEl.value = '';
+      dateFromEl.value = '';
+      dateToEl.value = '';
+      displayInitialMessage();
+    });
+
+
+    // -------------------------------------------------------------------------
+    // Search Interface Functions
+    // -------------------------------------------------------------------------
+
+    /**
+     * Display initial message when no search has been performed
+     */
+    function displayInitialMessage() {
+      resultsHeader.style.display = 'none';
+      resultsContainer.innerHTML = `
+        <div class="empty-state">
+          <p>Use the search bar or advanced filters to look up threat intelligence data.</p>
+        </div>
+      `;
+    }
+
+    /**
+     * Perform search based on current filter values
+     * Sends POST request to /search endpoint with all filter criteria
+     */
+    async function performSearch() {
+      // Gather all search criteria
+      const searchCriteria = {
+        query: searchQueryEl.value,
+        sector: sectorFilterEl.value,
+        country: countryFilterEl.value,
+        ttp: ttpFilterEl.value,
+        date_from: dateFromEl.value,
+        date_to: dateToEl.value
+      };
+
+      // Check if any filters are applied
+      const hasFilters = Object.values(searchCriteria).some(v => v !== '');
+      
+      // Show initial message if no filters applied
+      if (!hasFilters) {
+        displayInitialMessage();
+        return;
+      }
+
+      // Display loading state
+      resultsContainer.innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Searching threat intelligence database...</p>
+        </div>
+      `;
+
+      try {
+        // Send search request to backend
+        const response = await fetch('/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(searchCriteria)
+        });
+        
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        
+        const results = await response.json();
+        renderGroupedResults(results);
+      } catch (error) {
+        console.error("Error fetching search results:", error);
+        resultsContainer.innerHTML = `
+          <div class="empty-state">
+            <h3>Error Loading Results</h3>
+            <p>Please try again.</p>
+          </div>
+        `;
+      }
+    }
+
+    /**
+     * Render search results as clickable cards
+     * @param {Array} groups - Array of threat group objects from search
+     */
+    function renderGroupedResults(groups) {
+      resultsContainer.innerHTML = '';
+      
+      // Handle no results
+      if (!groups || groups.length === 0) {
+        resultsHeader.style.display = 'none';
+        resultsContainer.innerHTML = `
+          <div class="empty-state">
+            <h3>No Results Found</h3>
+            <p>Your search did not match any records. Try adjusting your filters.</p>
+          </div>
+        `;
+        return;
+      }
+      
+      // Show results header with count
+      resultsHeader.style.display = 'flex';
+      resultsCount.textContent = `Found ${groups.length} threat group${groups.length !== 1 ? 's' : ''}`;
+      
+      // Create a card for each group
+      groups.forEach(group => {
+        const linkCard = document.createElement('a');
+        linkCard.className = 'result-link-card';
+        linkCard.href = `/group/id/${group.group_id}`;
+
+        // Build match reasons badges if available
+        let matchReasonsHTML = '';
+        if (group.match_reasons && group.match_reasons.length > 0) {
+          matchReasonsHTML = `
+            <div class="match-reasons">
+              ${group.match_reasons.map(reason => 
+                `<span class="match-badge">Matched: ${reason}</span>`
+              ).join('')}
+            </div>
+          `;
+        }
+        
+        // Build activity date range if available
+        let dateRangeHTML = '';
+        if (group.first_incident && group.last_incident) {
+          dateRangeHTML = `
+            <div class="date-range">
+              Active: ${group.first_incident} to ${group.last_incident}
+            </div>
+          `;
+        }
+
+        // Populate card content
+        linkCard.innerHTML = `
+          <h3>${group.group_name}</h3>
+          <div class="summary-details">
+            <div class="summary-item"><strong>Incidents:</strong> ${group.incident_count}</div>
+            <div class="summary-item"><strong>Sectors:</strong> ${group.sectors.slice(0, 3).join(', ')}${group.sectors.length > 3 ? '...' : ''}</div>
+            <div class="summary-item"><strong>Countries:</strong> ${group.countries.slice(0, 3).join(', ')}${group.countries.length > 3 ? '...' : ''}</div>
+          </div>
+          ${matchReasonsHTML}
+          ${dateRangeHTML}
+        `;
+        resultsContainer.appendChild(linkCard);
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Initialisation
+    // -------------------------------------------------------------------------
+
+    // Load statistics and display initial message when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      displayInitialMessage();
+    });
+  </script>
+</body>
+</html>
