@@ -65,91 +65,79 @@
     - External links use rel="noopener noreferrer"
     - .onion links clearly marked with warnings
   -->
-  {% macro display_sources(source_url_string) -%}
-    {%- if source_url_string and source_url_string != 'N/A' -%}
-      {%- set urls = source_url_string.split(';') -%}
-      {%- set url_count = urls|length -%}
-      
-      {%- if url_count > 1 -%}
-        <span class="source-count">{{ url_count }} sources</span>
-      {%- endif -%}
-      
-      <ul class="source-list">
-        {%- for url in urls -%}
-          {%- set clean_url = url.strip() -%}
-          {%- if clean_url -%}
-            {%- set is_onion = '.onion' in clean_url -%}
-            {%- set is_gov = '.gov' in clean_url or 'gov.au' in clean_url or 'gov.uk' in clean_url -%}
-            {%- set is_edu = '.edu' in clean_url -%}
-            
-            <li class="source-item {% if is_onion %}onion{% elif is_gov %}government{% endif %}">
-              <span class="source-icon">
-                {%- if is_onion -%}
-                  🧅
-                {%- elif is_gov -%}
-                  🏛️
-                {%- elif is_edu -%}
-                  🎓
-                {%- elif 'cisa.gov' in clean_url or 'fbi.gov' in clean_url -%}
-                  🛡️
-                {%- elif 'ransomware.live' in clean_url or 'ransomlook.io' in clean_url -%}
-                  📊
-                {%- else -%}
-                  🔗
-                {%- endif -%}
-              </span>
-              
-              <a href="{{ clean_url }}" 
-                 target="_blank" 
-                 rel="noopener noreferrer" 
-                 class="source-link"
-                 title="{{ clean_url }}">
-                {%- if is_onion -%}
-                  Tor Hidden Service
-                {%- else -%}
-                  {{ clean_url|truncate(80, True) }}
-                {%- endif -%}
-              </a>
-              
-              <span class="source-type">
-                {%- if is_onion -%}
-                  Darknet
-                {%- elif is_gov -%}
-                  Government
-                {%- elif is_edu -%}
-                  Academic
-                {%- elif 'cisa.gov' in clean_url -%}
-                  CISA
-                {%- elif 'fbi.gov' in clean_url or 'justice.gov' in clean_url -%}
-                  Law Enforcement
-                {%- elif 'afp.gov.au' in clean_url -%}
-                  AFP
-                {%- elif 'cyber.gov.au' in clean_url -%}
-                  ACSC
-                {%- elif 'nhs.uk' in clean_url or 'england.nhs.uk' in clean_url -%}
-                  NHS
-                {%- elif 'ransomware.live' in clean_url or 'ransomlook.io' in clean_url -%}
-                  Tracking
-                {%- else -%}
-                  News/Security
-                {%- endif -%}
-              </span>
-            </li>
-            
-            {%- if is_onion and loop.first -%}
-              <li>
-                <div class="tor-warning">
-                  ⚠️ <strong>Ethics Approval Required:</strong> Access to Tor hidden services requires university ethics approval, Tor Browser, VPN, and isolated VM. For research purposes only.
-                </div>
-              </li>
-            {%- endif -%}
-          {%- endif -%}
-        {%- endfor -%}
-      </ul>
-    {%- else -%}
-      N/A
+ {% macro display_sources(source_url_string) -%}
+  {%- if source_url_string and source_url_string != 'N/A' -%}
+    {%- set urls = source_url_string.split(';') -%}
+    {%- set url_count = urls|length -%}
+    
+    {%- if url_count > 1 -%}
+      <span class="source-count">{{ url_count }} sources</span>
     {%- endif -%}
-  {%- endmacro %}
+    
+    <ul class="source-list">
+      {%- for url in urls -%}
+        {%- set clean_url = url.strip() -%}
+        {%- if clean_url -%}
+          {%- set is_onion = '.onion' in clean_url -%}
+          {%- set is_gov = '.gov' in clean_url or 'gov.au' in clean_url or 'gov.uk' in clean_url -%}
+          {%- set is_edu = '.edu' in clean_url -%}
+          
+          <li class="source-item {% if is_onion %}onion{% elif is_gov %}government{% endif %}">
+            <span class="source-icon">
+              {%- if is_onion -%}
+                🧅
+              {%- elif is_gov -%}
+                🏛️
+              {%- elif is_edu -%}
+                🎓
+              {%- elif 'cisa.gov' in clean_url or 'fbi.gov' in clean_url -%}
+                🛡️
+              {%- elif 'ransomware.live' in clean_url or 'ransomlook.io' in clean_url -%}
+                📊
+              {%- else -%}
+                🔗
+              {%- endif -%}
+            </span>
+            
+            <a href="{{ clean_url }}" 
+               target="_blank" 
+               rel="noopener noreferrer" 
+               class="source-link"
+               title="{{ clean_url }}">
+              {{ clean_url|truncate(80, True) }}
+            </a>
+            
+            <span class="source-type">
+              {%- if is_onion -%}
+                Darknet
+              {%- elif is_gov -%}
+                Government
+              {%- elif is_edu -%}
+                Academic
+              {%- elif 'cisa.gov' in clean_url -%}
+                CISA
+              {%- elif 'fbi.gov' in clean_url or 'justice.gov' in clean_url -%}
+                Law Enforcement
+              {%- elif 'afp.gov.au' in clean_url -%}
+                AFP
+              {%- elif 'cyber.gov.au' in clean_url -%}
+                ACSC
+              {%- elif 'nhs.uk' in clean_url or 'england.nhs.uk' in clean_url -%}
+                NHS
+              {%- elif 'ransomware.live' in clean_url or 'ransomlook.io' in clean_url -%}
+                Tracking
+              {%- else -%}
+                News/Security
+              {%- endif -%}
+            </span>
+          </li>
+        {%- endif -%}
+      {%- endfor -%}
+    </ul>
+  {%- else -%}
+    N/A
+  {%- endif -%}
+{%- endmacro %}
 
   <div class="container">
     <!-- Back navigation link -->
