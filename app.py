@@ -8,15 +8,16 @@ This application provides:
 - Detailed threat group profiles with incident history
 """
 
+# Standard library imports
 from flask import Flask, render_template, request, jsonify
 import sqlite3
-from datetime import datetime
-from collections import defaultdict
 import os
 
+ # Flask application setup
 app = Flask(__name__, template_folder="templates", static_folder="static")
 DATABASE = 'ransomware_research.db'
 
+# Database connection helper
 def get_db_connection():
     """
     Establish a connection to the SQLite database.
@@ -24,11 +25,15 @@ def get_db_connection():
     Returns:
         sqlite3.Connection: Database connection with row_factory set to sqlite3.Row
                            for dictionary-like access to rows
+                           
+    Security: Uses parameterised queries throughout to prevent SQL injection
     """
     conn = sqlite3.connect(DATABASE)
+    conn.execute("PRAGMA foreign_keys = ON")
     conn.row_factory = sqlite3.Row
     return conn
 
+# Query helper function
 def query_db(query, args=(), one=False):
     """
     Execute a database query and return results.
@@ -40,6 +45,8 @@ def query_db(query, args=(), one=False):
     
     Returns:
         sqlite3.Row or list: Single row if one=True, list of rows otherwise
+        
+    Security: All queries must use parameterised statements with bound variables
     """
     conn = get_db_connection()
     cur = conn.execute(query, args)
@@ -47,6 +54,7 @@ def query_db(query, args=(), one=False):
     conn.close()
     return (rv[0] if rv else None) if one else rv
 
+# Route for the main search page
 @app.route('/')
 def index():
     """
@@ -64,7 +72,7 @@ def index():
     sectors = conn.execute('''
         SELECT DISTINCT sector 
         FROM incidents 
-        WHERE sector IS NOT NULL 
+        WHERE sector IS NOT NULL AND sector != ''
         ORDER BY sector
     ''').fetchall()
     
@@ -72,13 +80,14 @@ def index():
     countries = conn.execute('''
         SELECT DISTINCT country 
         FROM incidents 
-        WHERE country IS NOT NULL 
+        WHERE country IS NOT NULL AND country != ''
         ORDER BY country
     ''').fetchall()
     
     # Retrieve all TTPs (MITRE ATT&CK techniques) for the filter dropdown
+    # Uses attack_id and title concatenation for display
     ttps = conn.execute('''
-        SELECT DISTINCT ttp_name
+        SELECT DISTINCT attack_id || ' ' || title as ttp_name
         FROM ttps
         ORDER BY attack_id
     ''').fetchall()
@@ -87,7 +96,7 @@ def index():
     date_range = conn.execute('''
         SELECT MIN(incident_date) as min_date, MAX(incident_date) as max_date
         FROM incidents
-        WHERE incident_date IS NOT NULL
+        WHERE incident_date IS NOT NULL AND incident_date != ''
     ''').fetchone()
     
     conn.close()
@@ -101,6 +110,7 @@ def index():
         max_date=date_range['max_date'] if date_range else None
     )
 
+# Route to handle search requests
 @app.route('/search', methods=['POST'])
 def search():
     """
@@ -124,6 +134,8 @@ def search():
             - match_reasons: List of fields that matched the search query
             - first_incident: Date of earliest incident
             - last_incident: Date of most recent incident
+            
+    Security: Uses parameterised queries to prevent SQL injection attacks
     """
     # Parse JSON request body
     data = request.get_json()
@@ -137,7 +149,7 @@ def search():
     conn = get_db_connection()
     
     # Build SQL query with match tracking to show why results matched
-    # This complex query aggregates data across multiple tables:
+    # This query aggregates data across multiple tables:
     # - groups: threat group information
     # - incidents: recorded attacks
     # - group_aliases: alternative names for groups
@@ -153,7 +165,7 @@ def search():
             MAX(CASE WHEN g.name LIKE ? THEN 1 ELSE 0 END) AS matched_name,
             MAX(CASE WHEN ga.alias LIKE ? THEN 1 ELSE 0 END) AS matched_alias,
             MAX(CASE WHEN i.sector LIKE ? THEN 1 ELSE 0 END) AS matched_sector,
-            MAX(CASE WHEN t.ttp_name LIKE ? THEN 1 ELSE 0 END) AS matched_ttp,
+            MAX(CASE WHEN (t.attack_id || ' ' || t.title) LIKE ? THEN 1 ELSE 0 END) AS matched_ttp,
             MAX(CASE WHEN i.victim_name LIKE ? THEN 1 ELSE 0 END) AS matched_victim,
             GROUP_CONCAT(DISTINCT CASE WHEN ga.alias LIKE ? THEN ga.alias END) AS matching_aliases,
             MIN(i.incident_date) AS first_incident,
@@ -179,7 +191,7 @@ def search():
                 g.name LIKE ? 
                 OR ga.alias LIKE ?
                 OR i.sector LIKE ?
-                OR t.ttp_name LIKE ?
+                OR (t.attack_id || ' ' || t.title) LIKE ?
                 OR i.victim_name LIKE ?
             )
         '''
@@ -195,9 +207,9 @@ def search():
         sql += ' AND i.country = ?'
         params.append(country_filter)
     
-    # Apply TTP filter
+    # Apply TTP filter (matches against concatenated attack_id and title)
     if ttp_filter:
-        sql += ' AND t.ttp_name = ?'
+        sql += ' AND (t.attack_id || \' \' || t.title) = ?'
         params.append(ttp_filter)
     
     # Apply date range filters
@@ -258,6 +270,7 @@ def search():
     
     return jsonify(groups)
 
+# Route for detailed threat group profile
 @app.route('/group/id/<int:group_id>')
 def group_details(group_id):
     """
@@ -274,6 +287,7 @@ def group_details(group_id):
                        targeted industries/countries, victim count, dates, and TTPs
         incidents (list): List of all incidents attributed to this group, with
                          victim info, sector, country, date, data exposed, and TTPs used
+                         Ordered by completeness (most complete incidents first)
     """
     conn = get_db_connection()
     
@@ -297,51 +311,56 @@ def group_details(group_id):
     # Build list of all names (primary name + aliases)
     alias_list = [group['name']] + [a['alias'] for a in aliases]
     
-    # Get list of targeted countries from group_countries junction table
+    # Get list of targeted countries directly from incidents table
     countries = conn.execute('''
-        SELECT c.country 
-        FROM group_countries gc
-        JOIN countries c ON gc.country_id = c.id
-        WHERE gc.group_id = ?
-        ORDER BY c.country
+        SELECT DISTINCT country 
+        FROM incidents
+        WHERE group_id = ? AND country IS NOT NULL AND country != ''
+        ORDER BY country
     ''', (group_id,)).fetchall()
     
     regions = ', '.join([c['country'] for c in countries]) if countries else 'N/A'
     
-    # Get list of targeted industries from group_industries junction table
+    # Get list of targeted industries directly from incidents table
     industries = conn.execute('''
-        SELECT i.industry 
-        FROM group_industries gi
-        JOIN industries i ON gi.industry_id = i.id
-        WHERE gi.group_id = ?
-        ORDER BY i.industry
+        SELECT DISTINCT sector 
+        FROM incidents
+        WHERE group_id = ? AND sector IS NOT NULL AND sector != ''
+        ORDER BY sector
     ''', (group_id,)).fetchall()
     
-    industries_str = ', '.join([i['industry'] for i in industries]) if industries else 'N/A'
+    industries_str = ', '.join([i['sector'] for i in industries]) if industries else 'N/A'
     
-    # Get activity timeline from the group_activity view
+    # Get activity timeline from the group_activity_summary view
     activity = conn.execute('''
-        SELECT first_seen, last_seen, incidents_count
-        FROM group_activity
+        SELECT first_incident, last_incident, total_incidents
+        FROM group_activity_summary
         WHERE group_id = ?
     ''', (group_id,)).fetchone()
     
-    first_seen = activity['first_seen'] if activity and activity['first_seen'] else 'N/A'
-    last_seen = activity['last_seen'] if activity and activity['last_seen'] else 'N/A'
+    first_seen = activity['first_incident'] if activity and activity['first_incident'] else 'N/A'
+    last_seen = activity['last_incident'] if activity and activity['last_incident'] else 'N/A'
     
     # Get all unique TTPs used by this group across all incidents
     group_ttps = conn.execute('''
-        SELECT DISTINCT t.ttp_name
+        SELECT DISTINCT t.attack_id || ' ' || t.title as ttp_name
         FROM ttps t
         JOIN incident_ttps it ON t.id = it.ttp_id
         JOIN incidents i ON it.incident_id = i.id
         WHERE i.group_id = ?
-        ORDER BY t.ttp_name
+        ORDER BY t.attack_id
     ''', (group_id,)).fetchall()
     
     mitre_ttps = ', '.join([t['ttp_name'] for t in group_ttps]) if group_ttps else 'N/A'
-    
-    # Get all incidents attributed to this group
+    """
+    Retrieve all incidents attributed to this group with completeness scoring
+    Get all incidents attributed to this group with completeness scoring
+    Completeness score prioritises incidents with more data populated:
+     - 1 point per populated field (sector, data_exposed, source_url)
+     - 0.1 point per 100 characters in data_exposed (rewards detailed descriptions)
+     - 0.5 points per associated TTP (rewards documented techniques)
+    Ensures the most informative incidents appear first"""
+
     incidents_raw = conn.execute('''
         SELECT 
             i.id,
@@ -350,10 +369,22 @@ def group_details(group_id):
             i.country,
             i.incident_date,
             i.data_exposed,
-            i.source_url
+            i.source_url,
+            -- Calculate completeness score based on populated fields
+            (
+                -- Count non-empty fields (each worth 1 point)
+                CASE WHEN i.sector IS NOT NULL AND i.sector != '' THEN 1 ELSE 0 END +
+                CASE WHEN i.data_exposed IS NOT NULL AND i.data_exposed != '' THEN 1 ELSE 0 END +
+                CASE WHEN i.source_url IS NOT NULL AND i.source_url != '' THEN 1 ELSE 0 END +
+                -- Bonus points for detailed data_exposed descriptions (0.1 point per 100 chars)
+                (LENGTH(COALESCE(i.data_exposed, '')) / 100.0) +
+                -- Count associated TTPs (each TTP worth 0.5 points)
+                (SELECT COUNT(*) * 0.5 FROM incident_ttps it2 WHERE it2.incident_id = i.id)
+            ) AS completeness_score
         FROM incidents i
         WHERE i.group_id = ?
-        ORDER BY i.incident_date DESC
+        -- Order by completeness first (most complete incidents at top), then by date
+        ORDER BY completeness_score DESC, i.incident_date DESC
     ''', (group_id,)).fetchall()
     
     # Build detailed incident list with TTPs for each incident
@@ -361,11 +392,11 @@ def group_details(group_id):
     for inc in incidents_raw:
         # Get TTPs specific to this incident
         incident_ttps = conn.execute('''
-            SELECT t.ttp_name
+            SELECT t.attack_id || ' ' || t.title as ttp_name
             FROM ttps t
             JOIN incident_ttps it ON t.id = it.ttp_id
             WHERE it.incident_id = ?
-            ORDER BY t.ttp_name
+            ORDER BY t.attack_id
         ''', (inc['id'],)).fetchall()
         
         incident_ttps_str = ', '.join([t['ttp_name'] for t in incident_ttps]) if incident_ttps else 'N/A'
@@ -399,6 +430,10 @@ def group_details(group_id):
     
     return render_template('group_details.html', summary=summary, incidents=incidents)
 
+# Run the Flask app 
 if __name__ == '__main__':
-    # Entry point for running the Flask app directly
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")), debug=os.environ.get("FLASK_DEBUG") == "1")
+    app.run(
+        host="0.0.0.0", 
+        port=int(os.environ.get("PORT", "5000")), 
+        debug=os.environ.get("FLASK_DEBUG") == "1"
+    )
